@@ -15,6 +15,7 @@ import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.FileOutputFormat;
+import org.apache.hadoop.mapred.JobConf;
 
 import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.Vector;
@@ -45,6 +46,7 @@ public class Driver {
 		conf.set("colNum",String.valueOf(colNum));
 		Job job = new Job(conf);
 		job.setJarByClass(Driver.class);
+		//JobConf job = new JobConf(conf,Driver.class);
 		job.setJobName("get mean vector");
 
 		job.setMapperClass(getMeanVectorMapper.class);
@@ -57,17 +59,20 @@ public class Driver {
 		job.setOutputValueClass(VectorWritable.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 
+
 		FileSystem fs = FileSystem.get(URI.create(output), conf);
 		fs.delete(new Path(output), true);
 
 		SequenceFileInputFormat.addInputPath(job, new Path(input));
 		SequenceFileOutputFormat.setOutputPath(job, new Path(output));	
+
+//		job.setNumMapTasks(15);
 		job.setNumReduceTasks(1);
 	
 		long start = System.currentTimeMillis();
 		job.waitForCompletion(true);
 		long end = System.currentTimeMillis();
-		System.out.println(String.format("Runtime for the Job is %d ms",end - start));
+		System.out.println(String.format("Runtime for the mean Job is %d ms",end - start));
 	}
 	private static void getCov(String input, String output, String meanVectorPath)
 			throws Exception {
@@ -77,6 +82,7 @@ public class Driver {
 		conf.set("colNum",String.valueOf(colNum));
 		Job job = new Job(conf);
 		job.setJarByClass(Driver.class);
+		//JobConf job = new JobConf(conf,Driver.class);
 		job.setJobName("get cov Matrix");
 
 		job.setMapperClass(getCovMapper.class);
@@ -94,12 +100,13 @@ public class Driver {
 
 		SequenceFileInputFormat.addInputPath(job, new Path(input));
 		SequenceFileOutputFormat.setOutputPath(job, new Path(output));	
+	//	job.setNumMapTasks(15);
 		job.setNumReduceTasks(1);
 	
 		long start = System.currentTimeMillis();
 		job.waitForCompletion(true);
 		long end = System.currentTimeMillis();
-		System.out.println(String.format("Runtime for the Job is %d ms",end - start));
+		System.out.println(String.format("Runtime for the cov Job is %d ms",end - start));
 	}
 	private static void getEigenVectorMatrix(String input, String output, String originMatrix,String meanVectorPath)
 			throws Exception {
@@ -109,7 +116,7 @@ public class Driver {
 
 		IntWritable key = new IntWritable();
 		VectorWritable value = new VectorWritable();
-		Matrix cov=new DenseMatrix(25,25);
+		Matrix cov=new DenseMatrix(colNum,colNum);
 
 		while(reader.next(key, value)){
 			int rowIdx=key.get();
@@ -136,7 +143,7 @@ public class Driver {
 
 		IntWritable key1 = new IntWritable();
 		VectorWritable value1 = new VectorWritable();
-		Matrix origin=new DenseMatrix(5,25);
+		Matrix origin=new DenseMatrix(rowNum,colNum);
 
 		while(reader1.next(key1, value1)){
 			int rowIdx1=key1.get();
@@ -147,6 +154,7 @@ public class Driver {
 
 		Matrix resu=origin.times(emat);
 		
+		long start = System.currentTimeMillis();
 		try{
 			PrintWriter out = new PrintWriter("svdResult.txt");
 			for(int i=0;i<resu.rowSize();i++){
@@ -160,6 +168,8 @@ public class Driver {
     			System.out.println(e.getMessage());
     	}
 
+		long end = System.currentTimeMillis();
+		System.out.println(String.format("Runtime for the cov Job is %d ms",end - start));
 		
 	}
 }
