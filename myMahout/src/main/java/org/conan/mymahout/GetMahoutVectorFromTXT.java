@@ -13,13 +13,16 @@ import org.apache.mahout.math.VectorWritable;
 import org.apache.mahout.math.DenseVector;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
 
 public class GetMahoutVectorFromTXT{
 	private static int rowNum,colNum;
 	public static ArrayList<Integer> readTXTWriteMahoutVector(String input,String output) throws Exception{
 		Configuration config = new Configuration();
-		BufferedReader reader =new BufferedReader(new FileReader(input));
 		FileSystem fs=FileSystem.get(config);
+		// Open a file for reading
+		FSDataInputStream in = fs.open(new Path(input));
+		BufferedReader reader =new BufferedReader(new InputStreamReader(in));
 		SequenceFile.Writer writer = SequenceFile.createWriter(fs ,config,new Path(output),IntWritable.class,VectorWritable.class);
 		String line;
 		int lineNum=0;
